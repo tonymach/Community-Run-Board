@@ -7,41 +7,112 @@
 
 import SwiftUI
 import CoreData
+import BottomSheet
+
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    @State var bottomSheetPosition: BottomSheetPosition = .middle //1
+    @State var searchText: String = ""
+    
+    @StateObject var locationManager: LocationManager = .init()
+    @State var showList: Bool = false
+    
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
         animation: .default)
     private var items: FetchedResults<Item>
 
+    
+    
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
+
+        ZStack   {
+            MapViewSelection()
+                .environmentObject(locationManager)
+                .navigationBarHidden(true)
+            
         }
+            
+
+        .bottomSheet(bottomSheetPosition: $bottomSheetPosition, headerContent: {
+            HStack(alignment: .center, spacing: 10) {
+                
+                Button{
+                    print("locating")
+                }label: {
+                    Label("Locate me", systemImage: "mappin.circle.fill")
+                    
+                }  .tint(.red)
+                    .foregroundColor(.white)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                
+                
+
+                if bottomSheetPosition == .bottom {
+                    
+                    Button {
+                        bottomSheetPosition = .top
+                    }label : {
+                        
+                        Text("View List")
+                        Image(systemName: "list.bullet.rectangle")
+                            .renderingMode(.original)
+
+                    }
+                    
+                    .tint(.blue)
+                    .foregroundColor(.white)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                   
+                }
+                
+                Spacer()
+                
+                Button{
+                    print("locating")
+                }label: {
+                    Image(systemName: "gear")
+                    
+                }  .tint(.gray)
+                    .foregroundColor(.white)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+ 
+
+            }
+            .foregroundColor(Color(UIColor.secondaryLabel))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 5)
+//            .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.quaternaryLabel)))
+            .padding(.bottom)
+            //When you tap the SearchBar, the BottomSheet moves to the .top position to make room for the keyboard.
+            .onTapGesture {
+                self.bottomSheetPosition = .top
+            }
+            
+        }) {
+                ScrollView {
+                        SessionCell(fullSession: true)
+                        SessionCell(fullSession: false)
+                        SessionCell(fullSession: false)
+                        SessionCell(fullSession: true)
+                        SessionCell(fullSession: false)
+                        SessionCell(fullSession: true)
+                        SessionCell(fullSession: true)
+                }
+            }
+            .clearModalBackground()
+
+    
+
+        
     }
 
+    
+    
     private func addItem() {
         withAnimation {
             let newItem = Item(context: viewContext)
@@ -84,5 +155,31 @@ private let itemFormatter: DateFormatter = {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    }
+}
+
+struct ClearBackgroundView: UIViewRepresentable {
+    func makeUIView(context: Context) -> some UIView {
+        let view = UIView()
+        DispatchQueue.main.async {
+            view.superview?.superview?.backgroundColor = .clear
+        }
+        return view
+    }
+    func updateUIView(_ uiView: UIViewType, context: Context) {
+    }
+}
+
+struct ClearBackgroundViewModifier: ViewModifier {
+    
+    func body(content: Content) -> some View {
+        content
+            .background(ClearBackgroundView())
+    }
+}
+
+extension View {
+    func clearModalBackground()->some View {
+        self.modifier(ClearBackgroundViewModifier())
     }
 }
